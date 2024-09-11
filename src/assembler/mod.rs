@@ -49,6 +49,7 @@ enum ParseState {
     End,
 }
 
+#[derive(Clone, Copy)]
 enum OpSize {
     Unkown,
     Zero,
@@ -67,14 +68,17 @@ fn parse_line(line: &str) -> Result<ParsedLine, &str> {
     let mut state = ParseState::Start;
     let mut operation_size = OpSize::Unkown;
 
+    // maybe use tuples (operation_size, tokens.next()) in all match arms to got a cleaner code
     loop {
         match state {
             ParseState::Start => {
                 if let Some(token) = tokens.next() {
                     if let Some(size) = check_pseudo_instruction(token) {
+                        // Pseudo Instruction
                         state = ParseState::Operation;
                         operation_size = size;
                     } else {
+                        // Label
                         state = ParseState::Label;
                         label = Some(token);
                     }
@@ -85,6 +89,7 @@ fn parse_line(line: &str) -> Result<ParsedLine, &str> {
             ParseState::Label => {
                 if let Some(token) = tokens.next() {
                     if let Some(size) = check_pseudo_instruction(token) {
+                        // Pseudo Instruction
                         state = ParseState::Operation;
                         operation_size = size;
                     } else {
@@ -94,13 +99,33 @@ fn parse_line(line: &str) -> Result<ParsedLine, &str> {
                     return Err("found label but missing instruction");
                 }
             }
-            ParseState::Operation => {
-                if let Some(token) = tokens.next() {
-                } else {
+            ParseState::Operation => match (operation_size, tokens.next()) {
+                (OpSize::Zero, Some(token)) => {
+                    if token.starts_with("*") {
+                        state = ParseState::Comment
+                    } else {
+                        return Err("too much tokens for this operation");
+                    }
                 }
-            }
-            ParseState::Operand1 => {}
-            ParseState::Operand2 => {}
+                (OpSize::Zero, None) => state = ParseState::End,
+                (OpSize::One, None) => state = ParseState::End,
+                (_, _) => state = ParseState::Operand1,
+            },
+            ParseState::Operand1 => match (operation_size, tokens.next()) {
+                (OpSize::One, Some(token)) => {
+                    if token.starts_with("*") {
+                        state = ParseState::Comment
+                    } else {
+                        return Err("too much tokens for this operation");
+                    }
+                }
+                (OpSize::One, None) => state = ParseState::End,
+                (OpSize::Two, None) => state = ParseState::End,
+                (_, _) => state = ParseState::Operand2,
+            },
+            ParseState::Operand2 => match (operation_size, tokens.next()) {
+                // (OpSize::Two) =>
+            },
             ParseState::Comment => {}
             ParseState::End => {
                 if let None = tokens.next() {
