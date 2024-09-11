@@ -58,6 +58,7 @@ impl VirtualMachine {
 mod test {
     use super::*;
 
+    // To use in unit tests
     fn setup_vm(acc: Word) -> VirtualMachine {
         VirtualMachine {
             memory: [0; 128],
@@ -76,6 +77,36 @@ mod test {
                 first: Some(19),
                 second: Some(28),
             },
+        };
+
+        vm.execute(Instruction::ADD, payload)
+    }
+
+    #[test]
+    #[should_panic(expected = "first operand must be None")]
+    fn add_none_first_operand() {
+        let mut vm = setup_vm(20);
+        let payload = Payload {
+            address_mode: AddressMode::INDIRECT,
+            operands: Operands {
+                first: Some(20),
+                second: None,
+            },
+        };
+
+        vm.execute(Instruction::ADD, payload);
+    }
+
+    #[test]
+    #[should_panic(expected = "missing first operand")]
+    fn add_missing_first_operand() {
+        let mut vm = setup_vm(20);
+        let payload = Payload {
+            address_mode: AddressMode::DIRECT,
+            operands: Operands {
+                first: None,
+                second: None,
+            }
         };
 
         vm.execute(Instruction::ADD, payload)
