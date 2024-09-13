@@ -10,13 +10,13 @@ pub enum PseudoInstruction {
 }
 
 pub fn token_to_pseudo_instr(token: &str) -> Option<PseudoInstruction> {
-    match token.to_uppercase().as_str() {
-        "START" => Some(PseudoInstruction::Start),
-        "INTDEF" => Some(PseudoInstruction::Intdef),
+    match token {
         "INTUSE" => Some(PseudoInstruction::Intuse),
-        "END" => Some(PseudoInstruction::End),
+        "INTDEF" => Some(PseudoInstruction::Intdef),
         "CONST" => Some(PseudoInstruction::Const),
         "SPACE" => Some(PseudoInstruction::Space),
+        "START" => Some(PseudoInstruction::Start),
+        "END" => Some(PseudoInstruction::End),
         _ => None,
     }
 }

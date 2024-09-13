@@ -7,7 +7,7 @@ pub enum NOperands {
     Two,
 }
 
-pub trait Sizeable {
+pub(crate) trait Sizeable {
     // fn size(&self) -> u8;
     fn n_operands(&self) -> NOperands;
 }

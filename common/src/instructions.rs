@@ -2,33 +2,33 @@ use super::{NOperands, Sizeable, Word};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Instruction {
-    HALT,
-    ADD,
-    CALL,
-    JUMP,
-    MULT,
-    READ,
-    RET,
-    SUB,
-    WRITE,
-    COPY,
+    Halt,
+    Add,
+    Call,
+    Jump,
+    Mult,
+    Read,
+    Ret,
+    Sub,
+    Write,
+    Copy,
 }
 
-// const MAPPINGS: &[(Instruction, Word)] = &[
-//     (Instruction::HALT, 28),
-//     (Instruction::ADD, 28),
-//     (Instruction::HALT, 28),
-//     (Instruction::HALT, 28),
-//     (Instruction::HALT, 28),
-//     (Instruction::HALT, 28),
-//     (Instruction::HALT, 28),
-//     (Instruction::HALT, 28),
-//     (Instruction::HALT, 28),
-// ];
-
-// pub fn instr_by_opcode(opcode: Word) -> Instruction {
-//     opcode as Instruction
-// }
+pub fn token_to_instr(token: &str) -> Option<Instruction> {
+    match token.to_uppercase().as_str() {
+        "ADD" => Some(Instruction::Add),
+        "CALL" => Some(Instruction::Call),
+        "COPY" => Some(Instruction::Copy),
+        "HALT" => Some(Instruction::Halt),
+        "JUMP" => Some(Instruction::Jump),
+        "MULT" => Some(Instruction::Mult),
+        "READ" => Some(Instruction::Read),
+        "RET" => Some(Instruction::Ret),
+        "SUB" => Some(Instruction::Sub),
+        "WRITE" => Some(Instruction::Write),
+        _ => None,
+    }
+}
 
 impl Instruction {
     fn opcode(&self) -> u8 {
@@ -54,16 +54,16 @@ impl Sizeable for Instruction {
 
     fn n_operands(&self) -> super::NOperands {
         match &self {
-            Self::HALT => NOperands::Zero,
-            Self::ADD => NOperands::One,
-            Self::CALL => NOperands::One,
-            Self::JUMP => NOperands::One,
-            Self::MULT => NOperands::One,
-            Self::READ => NOperands::One,
-            Self::RET => NOperands::Zero,
-            Self::SUB => NOperands::One,
-            Self::WRITE => NOperands::One,
-            Self::COPY => NOperands::Two,
+            Self::Halt => NOperands::Zero,
+            Self::Add => NOperands::One,
+            Self::Call => NOperands::One,
+            Self::Jump => NOperands::One,
+            Self::Mult => NOperands::One,
+            Self::Read => NOperands::One,
+            Self::Ret => NOperands::Zero,
+            Self::Sub => NOperands::One,
+            Self::Write => NOperands::One,
+            Self::Copy => NOperands::Two,
         }
     }
 }
