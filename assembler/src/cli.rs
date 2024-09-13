@@ -11,6 +11,4 @@ pub fn run() {
     let args = AssemblerArgs::parse();
 
     println!("Searching for file at {}", args.filename);
-
-    super::run();
 }

@@ -1,4 +1,4 @@
-use crate::common::{instructions::Instruction, Word};
+use common::{instructions::Instruction, Word};
 
 pub struct VirtualMachine {
     memory: [Word; 128],
@@ -106,7 +106,7 @@ mod test {
             operands: Operands {
                 first: None,
                 second: None,
-            }
+            },
         };
 
         vm.execute(Instruction::ADD, payload)
