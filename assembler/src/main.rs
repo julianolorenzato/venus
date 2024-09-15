@@ -108,7 +108,7 @@ fn analyze_line(line: Vec<&str>) -> Result<AnalyzedLine, &str> {
             (false, false, false, true) => Err("too many tokens before operation"),
             (false, false, true, false) => Err("too many tokens before operation"),
             (false, true, false, false) => Ok((Some(a), Some(b), Some(c), Some(d))),
-            (true, false, false, false) => Err("too many tokens"),
+            (true, false, false, false) => Err("too many tokens after operation"),
         },
         _ => panic!("invalid state"),
     }
@@ -197,58 +197,120 @@ mod test {
     use super::*;
 
     #[test]
-    fn split_line_regular() {
-        let got = split_line("LOOP JUMP 15");
-        let expected = Ok(vec!["LOOP", "JUMP", "15"]);
-        assert_eq!(got, expected);
+    fn split_line_test() {
+        let test_cases = vec![
+            (
+                "regular case",
+                "LOOP JUMP 15",
+                Ok(vec!["LOOP", "JUMP", "15"]),
+            ),
+            (
+                "comment case",
+                "LOOP JUMP 15 *SOME IRRELEVANT STUFF",
+                Ok(vec!["LOOP", "JUMP", "15"]),
+            ),
+            (
+                "more than 4 tokens case",
+                "LOOP JUMP 15 48 74",
+                Err("too many tokens"),
+            ),
+        ];
+
+        for (description, input, expected_output) in test_cases {
+            let output = split_line(input);
+            assert_eq!(output, expected_output, "{}", description);
+        }
     }
 
     #[test]
-    fn split_line_with_comment() {
-        let got = split_line("LOOP JUMP 15 *SOME IRRELEVANT STUFF");
-        let expected = Ok(vec!["LOOP", "JUMP", "15"]);
-        assert_eq!(got, expected);
-    }
+    fn analyze_line_test() {
+        let test_cases = vec![
+            ("when 0 tokens were supplied", vec![], Err("too few tokens")),
+            (
+                "when 1 token was supplied and it is an operation",
+                vec!["ADD"],
+                Ok((None, Some("ADD"), None, None)),
+            ),
+            (
+                "when 1 token was supplied and it is not an operation",
+                vec!["ZIG"],
+                Err("missing operation"),
+            ),
+            (
+                "when 2 tokens were supplied and the first is an operation",
+                vec!["ADD", "BOO"],
+                Ok((None, Some("ADD"), Some("BOO"), None)),
+            ),
+            (
+                "when 2 tokens were supplied and the second is an operation",
+                vec!["SIG", "SUB"],
+                Ok((Some("SIG"), Some("SUB"), None, None)),
+            ),
+            (
+                "when 2 tokens were supplied and both are operations",
+                vec!["JUMP", "ADD"],
+                Err("too many operations"),
+            ),
+            (
+                "when 2 tokens were supplied and none of them are operations",
+                vec!["SIG", "FOO"],
+                Err("missing operation"),
+            ),
+            (
+                "when 3 tokens were supplied and the first is an operation",
+                vec!["ADD", "15", "BAR"],
+                Ok((None, Some("ADD"), Some("15"), Some("BAR"))),
+            ),
+            (
+                "when 3 tokens were supplied and the second is an operation",
+                vec!["SIG", "JUMP", "89"],
+                Ok((Some("SIG"), Some("JUMP"), Some("89"), None)),
+            ),
+            (
+                "when 3 tokens were supplied and the third is an operation",
+                vec!["SIG", "FOO", "JUMP"],
+                Err("too many tokens before operation"),
+            ),
+            (
+                "when 3 tokens were supplied and there are multiple operations",
+                vec!["SUB", "FOO", "JUMP"],
+                Err("too many operations"),
+            ),
+            (
+                "when 3 tokens were supplied and none of them are operations",
+                vec!["FOO", "BAR", "BAZ"],
+                Err("missing operation"),
+            ),
+            (
+                "when 4 tokens were supplied and the second is an operation",
+                vec!["ZIG", "JUMP", "DOL", "77"],
+                Ok((Some("ZIG"), Some("JUMP"), Some("DOL"), Some("77"))),
+            ),
+            (
+                "when 4 tokens were supplied and the third is an operation",
+                vec!["ZIG", "FOO", "JUMP", "55"],
+                Err("too many tokens before operation"),
+            ),
+            (
+                "when 4 tokens were supplied and the fourth is an operation",
+                vec!["ZIG", "FOO", "55", "JUMP"],
+                Err("too many tokens before operation"),
+            ),
+            (
+                "when 4 tokens were supplied and the first is an operation",
+                vec!["JUMP", "78", "DOL", "45"],
+                Err("too many tokens after operation"),
+            ),
+            (
+                "when 4 tokens were supplied and there are multiple operations",
+                vec!["SIG", "SUB", "JUMP", "45"],
+                Err("too many operations"),
+            ),
+        ];
 
-    #[test]
-    fn split_line_too_many_tokens() {
-        let got = split_line("LOOP JUMP 15 48 74");
-        let expected = Err::<Vec<&str>, &str>("too many tokens");
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn analyze_line_zero_tokens() {
-        let got = analyze_line(vec![]);
-        let expected: Result<AnalyzedLine, &str> = Err("too few tokens");
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn analyze_line_one_token() {
-        let got = analyze_line(vec!["ADD"]);
-        let expected: Result<AnalyzedLine, &str> = Ok((None, Some("ADD"), None, None));
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn analyze_line_one_token_missing_operation() {
-        let got = analyze_line(vec!["ZIG"]);
-        let expected: Result<AnalyzedLine, &str> = Err("missing operation");
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn analyze_line_two_tokens() {
-        let got = analyze_line(vec!["PR", "SUB"]);
-        let expected: Result<AnalyzedLine, &str> = Ok((Some("PR"), Some("SUB"), None, None));
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn analyze_line_two_tokens_missing_operation() {
-        let got = analyze_line(vec!["PR", "15"]);
-        let expected: Result<AnalyzedLine, &str> = Err("missing operation");
-        assert_eq!(got, expected);
+        for (description, input, expected_output) in test_cases {
+            let output = analyze_line(input);
+            assert_eq!(output, expected_output, "{}", description);
+        }
     }
 }
