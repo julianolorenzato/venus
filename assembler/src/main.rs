@@ -6,11 +6,11 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use common::pseudo_instructions::PseudoInstruction;
 use common::{
     instructions::{token_to_instr, Instruction},
     pseudo_instructions::token_to_pseudo_instr,
 };
+use common::{pseudo_instructions::PseudoInstruction, Sizeable};
 use common::{NOperands, Word};
 
 fn main() {
@@ -21,25 +21,43 @@ struct Info {}
 
 type SymbolTable = HashMap<String, Info>;
 
-fn run() {
+fn run(filepath: &str, tasks: Vec<fn(String)>) {
     let symbol_table: SymbolTable = HashMap::new();
+
+    let mut file = File::open(filepath).unwrap();
+    let mut reader = BufReader::new(file);
+    // let mut line = String::new();
+
+    for line in reader.lines() {
+
+        for task in tasks {
+            task(line?)
+        }
+    }
+
+    // while match reader.read_line(&mut line) {
+    //     Ok(size) => {
+    //         return size
+    //     },
+    //     Err(_) => panic!("something goes wrong during reading line"),
+    // };
 
     split_line("ADD START 3 * oppasda");
 }
 
 fn first_pass(symbol_table: &mut SymbolTable) {}
 
-fn read_line(file: &mut File) {
+fn read_line(file: &mut File) -> (usize, String) {
     let mut reader = BufReader::new(file);
     let mut line = String::new();
 
     match reader.read_line(&mut line) {
-        Ok(_) => (),
+        Ok(size) => (size, String::from(line)),
         Err(_) => panic!("something goes wrong during reading line"),
     }
 }
 
-type AnalyzedLine<'a, 'b, 'c, 'd> = (
+type ParsedLine<'a, 'b, 'c, 'd> = (
     Option<&'a str>,
     Option<&'b str>,
     Option<&'c str>,
@@ -70,7 +88,7 @@ fn split_line(line: &str) -> Result<Vec<&str>, &str> {
 
 // This function should return a tuple defining
 // what token is what (label, operation, operand1, operand2)
-fn analyze_line(line: Vec<&str>) -> Result<AnalyzedLine, &str> {
+fn parse_line(line: Vec<&str>) -> Result<ParsedLine, &str> {
     match line[..] {
         [] => Err("too few tokens"),
         [a] => match instr_exists(a) {
@@ -112,6 +130,35 @@ fn analyze_line(line: Vec<&str>) -> Result<AnalyzedLine, &str> {
         },
         _ => panic!("invalid state"),
     }
+}
+
+fn is_valid_label(line: ParsedLine) -> bool {
+    if let Some(token) = line.0 {
+        token.chars().next().unwrap().is_alphabetic()
+    } else {
+        // if there is no label, consider it valid
+        true
+    }
+}
+
+fn is_valid_operands(line: ParsedLine) {
+
+}
+
+fn check_line_operands(line: ParsedLine) {
+    // match line {
+    //     (_, Some(operation), None, None) => {
+    //         if let Some(operation) = token_to_pseudo_instr(operation) {
+    //             if operation.n_operands() == NOperands::Zero {
+    //                 // Ok
+    //             } else {
+    //                 // Err
+    //             }
+    //         } else {
+    //             panic!("invalid state (already tested before")
+    //         }
+    //     }
+    // }
 }
 
 fn instr_exists(token: &str) -> bool {
@@ -223,7 +270,7 @@ mod test {
     }
 
     #[test]
-    fn analyze_line_test() {
+    fn parse_line_test() {
         let test_cases = vec![
             ("when 0 tokens were supplied", vec![], Err("too few tokens")),
             (
@@ -309,7 +356,7 @@ mod test {
         ];
 
         for (description, input, expected_output) in test_cases {
-            let output = analyze_line(input);
+            let output = parse_line(input);
             assert_eq!(output, expected_output, "{}", description);
         }
     }
