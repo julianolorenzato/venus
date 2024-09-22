@@ -12,7 +12,7 @@ fn main() {
     let mut asmr = Assembler::new("assembler/test.asm");
 
     match asmr.run() {
-        Ok(_) => println!("Opa"),
+        Ok(program) => println!("{:?}", program),
         Err(err) => panic!("{err}"),
     }
 }
