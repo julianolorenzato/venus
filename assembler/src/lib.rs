@@ -14,18 +14,19 @@ use common::{pseudo_instructions::PseudoInstruction, Sizeable};
 use common::{NOperands, Word};
 use error::{Kind, ParseError};
 
-pub struct Assembler<'a> {
-    filepath: &'a str,
+pub struct Assembler {
+    // filepath: &'a str,
+    file: File,
     line_counter: u32,
     location_counter: u32,
     symbol_table: HashMap<String, Info>,
     program: Option<Vec<Word>>,
 }
 
-impl<'a> Assembler<'a> {
+impl<'a> Assembler {
     pub fn new(filepath: &'a str) -> Self {
         Assembler {
-            filepath,
+            file: File::open(filepath).unwrap(),
             line_counter: 0,
             location_counter: 0,
             symbol_table: HashMap::new(),
@@ -33,17 +34,18 @@ impl<'a> Assembler<'a> {
         }
     }
 
-    pub fn run(&self) -> Result<Program, ParseError> {
-        let mut file = File::open(self.filepath).unwrap();
-        let reader = BufReader::new(&file);
+    pub fn run(&mut self) -> Result<Program, ParseError> {
+        let reader = BufReader::new(&self.file);
 
         let mut parsed_program: ParsedProgram = vec![];
         for line in reader.lines() {
+            self.line_counter += 1;
+
             let line = line.unwrap();
 
-            let split_line = split_line(line.as_str()).unwrap();
+            let split_line = split_line(&line, self.line_counter).unwrap();
 
-            let parsed_line = parse_line(split_line)?;
+            let parsed_line = parse_line(split_line, self.line_counter).unwrap();
 
             if !is_valid_label(&parsed_line) {
                 panic!("invalid label, it should contain only letters")
@@ -54,33 +56,27 @@ impl<'a> Assembler<'a> {
             }
 
             parsed_program.push(parsed_line);
-
-            // first pass
         }
 
-        file.rewind().unwrap();
-
-        let reader = BufReader::new(&file);
-        // second pass
-        for line in reader.lines() {}
-
+        self.line_counter = 0;
+        self.file.rewind().unwrap();
         Ok(Vec::<u16>::new())
     }
+
+    fn first_pass(p: ParsedProgram) {}
+
+    fn second_pass(p: ParsedProgram) {}
 }
 
 struct Info {}
+
 type Program = Vec<Word>;
 
 type ParsedProgram = Vec<ParsedLine>;
 
-// pub fn run(filepath: &str, tasks: Vec<fn(String)>) -> Result<Program, ParseError> {
-//     let symbol_table: HashMap<String, Info> =
+type ParsedLine = (Option<String>, String, Option<String>, Option<String>);
 
-// }
-
-// fn first_pass(parsed_line: ParsedLine, symbol_table: &mut SymbolTable) {}
-
-fn split_line(line: &str) -> Result<Vec<&str>, ParseError> {
+fn split_line(line: &str, line_index: u32) -> Result<Vec<&str>, ParseError> {
     let line = line.trim();
 
     // Line has info, need to remove the possible forwards comment
@@ -96,26 +92,24 @@ fn split_line(line: &str) -> Result<Vec<&str>, ParseError> {
     // need to check for too many tokens error here (as soon as
     // possible) in order to not waste time computing excedent useless data
     if tokens.next().is_some() {
-        Err(ParseError::new(0, Kind::TooManyTokens))
+        Err(ParseError::new(line_index, Kind::TooManyTokens))
     } else {
         Ok(split_line)
     }
 }
 
-type ParsedLine = (Option<String>, String, Option<String>, Option<String>);
-
 // This function should return a tuple defining
 // what token is what (label, operation, operand1, operand2)
-fn parse_line(line: Vec<&str>) -> Result<ParsedLine, ParseError> {
+fn parse_line(line: Vec<&str>, line_index: u32) -> Result<ParsedLine, ParseError> {
     match &line[..] {
-        [] => Err(ParseError::new(0, Kind::TooFewTokens)),
+        [] => Err(ParseError::new(line_index, Kind::TooFewTokens)),
         [a] => match is_valid_operation(a) {
             true => Ok((None, a.to_string(), None, None)),
-            false => Err(ParseError::new(0, Kind::NotFoundOperation)),
+            false => Err(ParseError::new(line_index, Kind::NotFoundOperation)),
         },
         [a, b] => match (is_valid_operation(a), is_valid_operation(b)) {
-            (false, false) => Err(ParseError::new(0, Kind::NotFoundOperation)),
-            (true, true) => Err(ParseError::new(0, Kind::TooManyOperations)),
+            (false, false) => Err(ParseError::new(line_index, Kind::NotFoundOperation)),
+            (true, true) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
             (true, false) => Ok((None, a.to_string(), Some(b.to_string()), None)),
             (false, true) => Ok((Some(a.to_string()), b.to_string(), None, None)),
         },
@@ -124,11 +118,14 @@ fn parse_line(line: Vec<&str>) -> Result<ParsedLine, ParseError> {
             is_valid_operation(b),
             is_valid_operation(c),
         ) {
-            (false, false, false) => Err(ParseError::new(0, Kind::NotFoundOperation)),
-            (true, true, _) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (_, true, true) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (true, _, true) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (false, false, true) => Err(ParseError::new(0, Kind::TooManyTokensBeforeOperation)),
+            (false, false, false) => Err(ParseError::new(line_index, Kind::NotFoundOperation)),
+            (true, true, _) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (_, true, true) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (true, _, true) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (false, false, true) => Err(ParseError::new(
+                line_index,
+                Kind::TooManyTokensBeforeOperation,
+            )),
             (false, true, false) => Ok((
                 Some(a.to_string()),
                 b.to_string(),
@@ -148,28 +145,33 @@ fn parse_line(line: Vec<&str>) -> Result<ParsedLine, ParseError> {
             is_valid_operation(c),
             is_valid_operation(d),
         ) {
-            (false, false, false, false) => Err(ParseError::new(0, Kind::NotFoundOperation)),
-            (true, true, _, _) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (true, _, true, _) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (true, _, _, true) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (_, true, _, true) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (_, _, true, true) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (_, true, true, _) => Err(ParseError::new(0, Kind::TooManyOperations)),
-            (false, false, false, true) => {
-                Err(ParseError::new(0, Kind::TooManyTokensBeforeOperation))
+            (false, false, false, false) => {
+                Err(ParseError::new(line_index, Kind::NotFoundOperation))
             }
-            (false, false, true, false) => {
-                Err(ParseError::new(0, Kind::TooManyTokensBeforeOperation))
-            }
+            (true, true, _, _) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (true, _, true, _) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (true, _, _, true) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (_, true, _, true) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (_, _, true, true) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (_, true, true, _) => Err(ParseError::new(line_index, Kind::TooManyOperations)),
+            (false, false, false, true) => Err(ParseError::new(
+                line_index,
+                Kind::TooManyTokensBeforeOperation,
+            )),
+            (false, false, true, false) => Err(ParseError::new(
+                line_index,
+                Kind::TooManyTokensBeforeOperation,
+            )),
             (false, true, false, false) => Ok((
                 Some(a.to_string()),
                 b.to_string(),
                 Some(c.to_string()),
                 Some(d.to_string()),
             )),
-            (true, false, false, false) => {
-                Err(ParseError::new(0, Kind::TooManyTokensAfterOperation))
-            }
+            (true, false, false, false) => Err(ParseError::new(
+                line_index,
+                Kind::TooManyTokensAfterOperation,
+            )),
         },
         _ => panic!("invalid state"),
     }
@@ -227,116 +229,135 @@ mod test {
         let test_cases = vec![
             (
                 "regular case",
-                "LOOP JUMP 15",
+                ("LOOP JUMP 15", 14),
                 Ok(vec!["LOOP", "JUMP", "15"]),
             ),
             (
                 "comment case",
-                "LOOP JUMP 15 *SOME IRRELEVANT STUFF",
+                ("LOOP JUMP 15 *SOME IRRELEVANT STUFF", 14),
                 Ok(vec!["LOOP", "JUMP", "15"]),
             ),
             (
                 "more than 4 tokens case",
-                "LOOP JUMP 15 48 74",
-                Err("too many tokens"),
+                ("LOOP JUMP 15 48 74", 14),
+                Err(ParseError::new(14, Kind::TooManyTokens)),
             ),
         ];
 
-        for (description, input, expected_output) in test_cases {
-            let output = split_line(input);
-            // assert_eq!(output, expected_output, "{}", description);
+        for (description, (line, line_index), expected_output) in test_cases {
+            let output = split_line(line, line_index);
+            assert_eq!(output, expected_output, "{}", description);
         }
     }
 
     #[test]
     fn parse_line_test() {
         let test_cases = vec![
-            ("when 0 tokens were supplied", vec![], Err("too few tokens")),
+            (
+                "when 0 tokens were supplied",
+                (vec![], 23),
+                Err(ParseError::new(23, Kind::TooFewTokens)),
+            ),
             (
                 "when 1 token was supplied and it is an operation",
-                vec!["ADD"],
-                Ok((None, "ADD", None, None)),
+                (vec!["ADD"], 23),
+                Ok((None, "ADD".to_string(), None, None)),
             ),
             (
                 "when 1 token was supplied and it is not an operation",
-                vec!["ZIG"],
-                Err("missing operation"),
+                (vec!["ZIG"], 23),
+                Err(ParseError::new(23, Kind::NotFoundOperation)),
             ),
             (
                 "when 2 tokens were supplied and the first is an operation",
-                vec!["ADD", "BOO"],
-                Ok((None, "ADD", Some("BOO"), None)),
+                (vec!["ADD", "BOO"], 23),
+                Ok((None, "ADD".to_string(), Some("BOO".to_string()), None)),
             ),
             (
                 "when 2 tokens were supplied and the second is an operation",
-                vec!["SIG", "SUB"],
-                Ok((Some("SIG"), "SUB", None, None)),
+                (vec!["SIG", "SUB"], 23),
+                Ok((Some("SIG".to_string()), "SUB".to_string(), None, None)),
             ),
             (
                 "when 2 tokens were supplied and both are operations",
-                vec!["JUMP", "ADD"],
-                Err("too many operations"),
+                (vec!["JUMP", "ADD"], 23),
+                Err(ParseError::new(23, Kind::TooManyOperations)),
             ),
             (
                 "when 2 tokens were supplied and none of them are operations",
-                vec!["SIG", "FOO"],
-                Err("missing operation"),
+                (vec!["SIG", "FOO"], 23),
+                Err(ParseError::new(23, Kind::NotFoundOperation)),
             ),
             (
                 "when 3 tokens were supplied and the first is an operation",
-                vec!["ADD", "15", "BAR"],
-                Ok((None, "ADD", Some("15"), Some("BAR"))),
+                (vec!["ADD", "15", "BAR"], 23),
+                Ok((
+                    None,
+                    "ADD".to_string(),
+                    Some("15".to_string()),
+                    Some("BAR".to_string()),
+                )),
             ),
             (
                 "when 3 tokens were supplied and the second is an operation",
-                vec!["SIG", "JUMP", "89"],
-                Ok((Some("SIG"), "JUMP", Some("89"), None)),
+                (vec!["SIG", "JUMP", "89"], 23),
+                Ok((
+                    Some("SIG".to_string()),
+                    "JUMP".to_string(),
+                    Some("89".to_string()),
+                    None,
+                )),
             ),
             (
                 "when 3 tokens were supplied and the third is an operation",
-                vec!["SIG", "FOO", "JUMP"],
-                Err("too many tokens before operation"),
+                (vec!["SIG", "FOO", "JUMP"], 23),
+                Err(ParseError::new(23, Kind::TooManyTokensBeforeOperation)),
             ),
             (
                 "when 3 tokens were supplied and there are multiple operations",
-                vec!["SUB", "FOO", "JUMP"],
-                Err("too many operations"),
+                (vec!["SUB", "FOO", "JUMP"], 23),
+                Err(ParseError::new(23, Kind::TooManyOperations)),
             ),
             (
                 "when 3 tokens were supplied and none of them are operations",
-                vec!["FOO", "BAR", "BAZ"],
-                Err("missing operation"),
+                (vec!["FOO", "BAR", "BAZ"], 23),
+                Err(ParseError::new(23, Kind::NotFoundOperation)),
             ),
             (
                 "when 4 tokens were supplied and the second is an operation",
-                vec!["ZIG", "JUMP", "DOL", "77"],
-                Ok((Some("ZIG"), "JUMP", Some("DOL"), Some("77"))),
+                (vec!["ZIG", "JUMP", "DOL", "77"], 23),
+                Ok((
+                    Some("ZIG".to_string()),
+                    "JUMP".to_string(),
+                    Some("DOL".to_string()),
+                    Some("77".to_string()),
+                )),
             ),
             (
                 "when 4 tokens were supplied and the third is an operation",
-                vec!["ZIG", "FOO", "JUMP", "55"],
-                Err("too many tokens before operation"),
+                (vec!["ZIG", "FOO", "JUMP", "55"], 23),
+                Err(ParseError::new(23, Kind::TooManyTokensBeforeOperation)),
             ),
             (
                 "when 4 tokens were supplied and the fourth is an operation",
-                vec!["ZIG", "FOO", "55", "JUMP"],
-                Err("too many tokens before operation"),
+                (vec!["ZIG", "FOO", "55", "JUMP"], 23),
+                Err(ParseError::new(23, Kind::TooManyTokensBeforeOperation)),
             ),
             (
                 "when 4 tokens were supplied and the first is an operation",
-                vec!["JUMP", "78", "DOL", "45"],
-                Err("too many tokens after operation"),
+                (vec!["JUMP", "78", "DOL", "45"], 23),
+                Err(ParseError::new(23, Kind::TooManyTokensAfterOperation)),
             ),
             (
                 "when 4 tokens were supplied and there are multiple operations",
-                vec!["SIG", "SUB", "JUMP", "45"],
-                Err("too many operations"),
+                (vec!["SIG", "SUB", "JUMP", "45"], 23),
+                Err(ParseError::new(23, Kind::TooManyOperations)),
             ),
         ];
 
-        for (description, input, expected_output) in test_cases {
-            let output = parse_line(input);
-            // assert_eq!(output, expected_output, "{}", description);
+        for (description, (line, line_index), expected_output) in test_cases {
+            let output = parse_line(line, line_index);
+            assert_eq!(output, expected_output, "{}", description);
         }
     }
 }

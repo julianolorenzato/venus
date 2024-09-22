@@ -1,12 +1,12 @@
 use std::{error::Error, fmt};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParseError {
-    line: u32,
+    line_index: u32,
     kind: Kind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Kind {
     NotFoundOperation,
     TooManyOperations,
@@ -17,8 +17,8 @@ pub enum Kind {
 }
 
 impl ParseError {
-    pub fn new(line: u32, kind: Kind) -> Self {
-        ParseError { line, kind }
+    pub fn new(line_index: u32, kind: Kind) -> Self {
+        ParseError { line_index, kind }
     }
 }
 
@@ -30,7 +30,7 @@ impl fmt::Display for ParseError {
             _ => "Something gone wrong",
         };
 
-        write!(f, "{} (at line {}).", msg, self.line)
+        write!(f, "{} (at line {}).", msg, self.line_index)
     }
 }
 

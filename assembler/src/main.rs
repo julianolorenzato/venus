@@ -9,7 +9,7 @@ struct AssemblerArgs {
 }
 
 fn main() {
-    let asmr = Assembler::new("assembler/test.asm");
+    let mut asmr = Assembler::new("assembler/test.asm");
 
     match asmr.run() {
         Ok(_) => println!("Opa"),
