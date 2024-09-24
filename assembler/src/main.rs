@@ -21,13 +21,14 @@ fn main() {
     for (i, line) in reader.lines().enumerate() {
         let line_index = i as u32;
 
-        match lexer::tokenize(&line.unwrap(), line_index) {
+        match lexer::decode(&line.unwrap(), line_index) {
             Ok(line) => println!("{:?}", line),
             Err(err) => println!("{}", err)
         };
     }
     
-    // let args = AssemblerArgs::parse();
+    let args = AssemblerArgs::parse();
+
     // let mut asm = Assembler::new(&args.filepath);
 
     // if args.macro_support {

@@ -1,5 +1,5 @@
 use core::fmt;
-use std::error::Error;
+use std::{error::Error, io::Empty};
 
 use common::{instructions::token_to_instr, pseudo_instructions::token_to_pseudo_instr};
 
@@ -13,7 +13,9 @@ pub enum Line {
     MacroCall(String, Vec<String>, WhyMacroCall),
 }
 
-pub fn tokenize(line: &str, line_index: u32) -> Result<Line, LexerError> {
+pub type Program = Vec<Line>;
+
+pub fn decode(line: &str, line_index: u32) -> Result<Line, LexerError> {
     let line = line.trim();
 
     if line.is_empty() {
@@ -26,7 +28,7 @@ pub fn tokenize(line: &str, line_index: u32) -> Result<Line, LexerError> {
     }
 
     if line.to_uppercase().starts_with("MACRO") {
-        return tokenize_macro_signature(&line, line_index);
+        return decode_macro_signature(&line, line_index);
     }
 
     if line.to_uppercase().starts_with("MEND") {
@@ -43,7 +45,7 @@ pub fn tokenize(line: &str, line_index: u32) -> Result<Line, LexerError> {
     return parse_line(line.split(" ").collect(), line_index);
 }
 
-fn tokenize_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerError> {
+fn decode_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerError> {
     let mut tokens = line.split(" ");
 
     let macro_name = tokens.by_ref().skip(1).next();
@@ -69,6 +71,56 @@ fn tokenize_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerEr
             line_index,
             LexerErrorKind::MissingMacroName,
         ))
+    }
+}
+
+pub fn encode(line: Line) -> String {
+    match line {
+        Line::Empty => "\n".to_string(),
+        Line::Comment(mut comment) => {
+            comment.insert(0, '*');
+            comment
+        },
+        Line::MacroSignature(mut name, params) => {
+            for param in params {
+                name.push(' ');
+                name.push('&');
+                name.push_str(&param);
+            }
+
+            name
+        },
+        Line::MacroEnd => String::from("MEND"),
+        Line::MacroCall(mut name, args, _) => {
+            for arg in args {
+                name.push(' ');
+                name.push_str(&arg);
+            }
+
+            name
+        },
+        Line::Regular(label, operation, operand1, operand2) => {
+            let mut encoded = String::new();
+
+            if let Some(label) = label {
+                encoded.push_str(&label);
+                encoded.push(' ');
+            }
+
+            encoded.push_str(&operation);
+
+            if let Some(op1) = operand1 {
+                encoded.push(' ');
+                encoded.push_str(&op1);
+            }
+
+            if let Some(op2) = operand2 {
+                encoded.push(' ');
+                encoded.push_str(&op2);
+            }
+
+            encoded
+        }
     }
 }
 
