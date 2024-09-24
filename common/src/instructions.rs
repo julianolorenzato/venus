@@ -12,6 +12,9 @@ pub enum Instruction {
     Sub,
     Write,
     Copy,
+    Load,
+    Store,
+    Div,
 }
 
 pub fn token_to_instr(token: &str) -> Option<Instruction> {
@@ -26,6 +29,9 @@ pub fn token_to_instr(token: &str) -> Option<Instruction> {
         "RET" => Some(Instruction::Ret),
         "SUB" => Some(Instruction::Sub),
         "WRITE" => Some(Instruction::Write),
+        "LOAD" => Some(Instruction::Load),
+        "STORE" => Some(Instruction::Store),
+        "DIV" => Some(Instruction::Div),
         _ => None,
     }
 }
@@ -64,6 +70,9 @@ impl Sizeable for Instruction {
             Self::Sub => NOperands::One,
             Self::Write => NOperands::One,
             Self::Copy => NOperands::Two,
+            Self::Load => NOperands::One,
+            Self::Store => NOperands::One,
+            Self::Div => NOperands::One,
         }
     }
 }

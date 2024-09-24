@@ -23,6 +23,7 @@ MULTSC &A &C TEMP1
 MULTSC TEMP1 @4 TEMP1
 MULTSC &A &B TEMP2
 SUB TEMP1
+* some random stuff...
 STORE &D
 MEND
 *
