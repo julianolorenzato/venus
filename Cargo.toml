@@ -1,5 +1,5 @@
 [workspace]
-members = ["assembler", "common", "linker", "loader", "mp", "vm"]
+members = ["assembler", "common", "linker", "loader", "vm"]
 
 [package]
 name = "venus"

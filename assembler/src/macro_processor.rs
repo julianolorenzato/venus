@@ -8,25 +8,35 @@ use crate::lexer::{self, Line, Program};
 
 #[derive(Debug)]
 struct Macro {
-    // name: String,
+    name: String,
     params: Vec<String>,
     body: Vec<Line>,
-    macro_level: u32, // inner_macros: Vec<Macro>
 }
 
+struct Current {
+    macro_name: String,
+    macro_params: Vec<String>,
+    nest_level: u32,
+    macro_start: usize
+}
 pub struct MacroProcessor {
-    // change to set after maybe?
-    macros: HashMap<String, Macro>,
+    // change to set after maybe? and move string name to macro struct
+    macro_table: HashMap<String, Macro>,
     program: Program,
-    macro_level: u32,
+    current: Current
 }
 
 impl MacroProcessor {
     pub fn new(program: Program) -> Self {
         MacroProcessor {
-            macros: HashMap::<String, Macro>::new(),
+            macro_table: HashMap::<String, Macro>::new(),
             program,
-            macro_level: 0,
+            current: Current {
+                macro_name: String::new(),
+                macro_params: vec![],
+                macro_start: 0,
+                nest_level: 0
+            }
         }
     }
 
@@ -42,34 +52,35 @@ impl MacroProcessor {
         let mut outer_macro_params: Vec<String> = Vec::<String>::new();
 
         for (i, line) in self.program.iter().enumerate() {
-            println!("{:?}", self.macros);
+            println!("{:?}", self.macro_table);
 
             match line {
                 Line::MacroDef(name, params) => {
+                    self.define_macro(name.to_string(), params.to_vec(), i);
                     // start of OUTER macro def
-                    if nested_level == 0 {
-                        outer_macro_name = name.to_string();
-                        outer_macro_params = params.to_vec();
-                        outer_macro_start = i;
-                    }
+                    // if nested_level == 0 {
+                    //     outer_macro_name = name.to_string();
+                    //     outer_macro_params = params.to_vec();
+                    //     outer_macro_start = i;
+                    // }
 
-                    nested_level += 1;
+                    // nested_level += 1;
                 }
                 Line::MacroEnd => {
                     if nested_level == 0 {
-                        return Err("unexpected macro end here".to_string())
-                    } else {   
+                        return Err("unexpected macro end here".to_string());
+                    } else {
                         nested_level -= 1;
 
                         // end of OUTER macro def
                         if nested_level == 0 {
-                            let m = Macro{
+                            let m = Macro {
                                 body: self.program[outer_macro_start..i].to_vec(),
                                 params: outer_macro_params.clone(),
-                                macro_level: 0
+                                name: self.current.macro_name
                             };
 
-                            self.macros.insert(outer_macro_name.clone(), m);
+                            self.macro_table.insert(outer_macro_name.clone(), m);
                         }
                     }
                 }
@@ -78,7 +89,7 @@ impl MacroProcessor {
                         continue;
                     }
 
-                    if let Some(m) = self.macros.get(name) {
+                    if let Some(m) = self.macro_table.get(name) {
                         // not handling args yet
                         p.extend_from_slice(&m.body);
 
@@ -98,22 +109,22 @@ impl MacroProcessor {
                                 }
                                 Line::MacroEnd => {
                                     if nested_level == 0 {
-                                        return Err("unexpected macro end here".to_string())
+                                        return Err("unexpected macro end here".to_string());
                                     }
 
                                     nested_level -= 1;
 
                                     if nested_level == 0 {
-                                        let m = Macro{
+                                        let m = Macro {
                                             body: vec![],
                                             params: macro_params.clone(),
-                                            macro_level: 0
+                                            name: self.current.macro_name
                                         };
 
-                                        self.macros.insert(macro_name.clone(), m);
+                                        self.macro_table.insert(macro_name.clone(), m);
                                     }
                                 }
-                                _ => continue
+                                _ => continue,
                             }
                         }
                     } else {
@@ -125,11 +136,21 @@ impl MacroProcessor {
                         continue;
                     }
                     p.push(other_line.clone())
-                },
+                }
             }
         }
 
         Ok(p)
+    }
+
+    fn define_macro(&mut self, name: String, params: Vec<String>, start: usize) {
+        // start of OUTER macro def
+        if self.current.nest_level == 0 {
+            self.current.macro_name = name;
+            self.current.macro_params = params;
+        }
+
+        self.current.nest_level += 1;
     }
 
     // macro definition and macro signature is the same, need to choose only one name to it
