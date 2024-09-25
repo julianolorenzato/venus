@@ -3,7 +3,7 @@ mod lexer;
 
 use clap::Parser;
 use lexer::Line;
-use std::{fs::File, io::{BufRead, BufReader}};
+use std::{fs::{File, OpenOptions}, io::{BufRead, BufReader, Write}};
 
 #[derive(Parser)]
 #[command(author, version, about="Assemble Venus mnemonic code.", long_about = None)]
@@ -38,6 +38,14 @@ fn main() {
     let p = mp.run();
 
     println!("{:#?}", p);
+
+    let mut f = OpenOptions::new().append(true).create(true).open("assembler/output_test.asm").unwrap();
+
+    for l in p.unwrap() {
+        let s = lexer::encode(l);
+
+        writeln!(f, "{s}").unwrap();
+    }
 
     // let mut asm = Assembler::new(&args.filepath);
 

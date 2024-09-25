@@ -36,11 +36,12 @@ impl MacroProcessor {
         let mut p = Vec::<Line>::new();
 
         // let ms = Vec::<LinkedList<Macro>>::new();
+        let mut outer_macro_start = 0;
         let mut nested_level: u32 = 0;
         let mut outer_macro_name: String = String::new();
         let mut outer_macro_params: Vec<String> = Vec::<String>::new();
 
-        for line in &self.program {
+        for (i, line) in self.program.iter().enumerate() {
             println!("{:?}", self.macros);
 
             match line {
@@ -49,6 +50,7 @@ impl MacroProcessor {
                     if nested_level == 0 {
                         outer_macro_name = name.to_string();
                         outer_macro_params = params.to_vec();
+                        outer_macro_start = i;
                     }
 
                     nested_level += 1;
@@ -62,7 +64,7 @@ impl MacroProcessor {
                         // end of OUTER macro def
                         if nested_level == 0 {
                             let m = Macro{
-                                body: vec![],
+                                body: self.program[outer_macro_start..i].to_vec(),
                                 params: outer_macro_params.clone(),
                                 macro_level: 0
                             };
