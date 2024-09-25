@@ -2,6 +2,7 @@ mod macro_processor;
 mod lexer;
 
 use clap::Parser;
+use lexer::Line;
 use std::{fs::File, io::{BufRead, BufReader}};
 
 #[derive(Parser)]
@@ -18,16 +19,25 @@ fn main() {
     let file = File::open(args.filepath).unwrap();
     let reader = BufReader::new(file);
 
+    let mut program = Vec::<Line>::new();
+
     for (i, line) in reader.lines().enumerate() {
         let line_index = i as u32;
 
         match lexer::decode(&line.unwrap(), line_index) {
-            Ok(line) => println!("{:?}", line),
+            Ok(line) => {
+                // println!("{:?}", line);
+                program.push(line);
+            },
             Err(err) => println!("{}", err)
         };
     }
     
-    let args = AssemblerArgs::parse();
+    let mut mp = macro_processor::MacroProcessor::new(program);
+
+    let p = mp.run();
+
+    println!("{:#?}", p);
 
     // let mut asm = Assembler::new(&args.filepath);
 

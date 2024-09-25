@@ -3,12 +3,12 @@ use std::{error::Error, io::Empty};
 
 use common::{instructions::token_to_instr, pseudo_instructions::token_to_pseudo_instr};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Line {
     Empty,
     Comment(String),
     Regular(Option<String>, String, Option<String>, Option<String>),
-    MacroSignature(String, Vec<String>),
+    MacroDef(String, Vec<String>),
     MacroEnd,
     MacroCall(String, Vec<String>, WhyMacroCall),
 }
@@ -65,7 +65,7 @@ fn decode_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerErro
         .collect();
 
     if let Some(name) = macro_name {
-        Ok(Line::MacroSignature(name.to_string(), parameters?))
+        Ok(Line::MacroDef(name.to_string(), parameters?))
     } else {
         Err(LexerError::new(
             line_index,
@@ -81,7 +81,7 @@ pub fn encode(line: Line) -> String {
             comment.insert(0, '*');
             comment
         },
-        Line::MacroSignature(mut name, params) => {
+        Line::MacroDef(mut name, params) => {
             for param in params {
                 name.push(' ');
                 name.push('&');
@@ -124,6 +124,7 @@ pub fn encode(line: Line) -> String {
     }
 }
 
+// is used? must be
 fn check_name(token: &str) -> bool {
     token.chars().next().unwrap().is_alphabetic()
 }
@@ -143,8 +144,8 @@ enum LexerErrorKind {
     TooFewTokens,
 }
 
-#[derive(Debug)]
-enum WhyMacroCall {
+#[derive(Debug, Clone)]
+pub enum WhyMacroCall {
     NotFoundOperation,
     TooManyOperations,
     TooManyTokens,
@@ -188,7 +189,9 @@ pub fn is_valid_operation(token: &str) -> bool {
     }
 }
 
+
 // maybe should change Line to have PseudoInstrCall and MachineInstrCall, and find each in this function instead of just calling it 'Regular', and the second field of each should be of the proper type (PseudoInstr or MachineInstr)
+// maybe instead Ok(Regular...) go to function to define which type of instruction (pseudo or machine)
 pub fn parse_line(line: Vec<&str>, line_index: u32) -> Result<Line, LexerError> {
     match &line[..] {
         [] => Err(LexerError::new(line_index, LexerErrorKind::TooFewTokens)),

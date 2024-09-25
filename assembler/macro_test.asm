@@ -5,7 +5,7 @@ MACRO SCALE &RP
 
     LOAD &A
     MULT &B
-    SHIFTR &RP
+    *SHIFTR &RP
     STORE &C
     MEND
     
@@ -13,18 +13,19 @@ MACRO SCALE &RP
 
     LOAD &A
     DIV &B
-    SHIFTL &RP
+    *SHIFTL &RP
     STORE &C
     MEND
 MEND
 *
 MACRO DISCR &A &B &C &D
-MULTSC &A &C TEMP1
-MULTSC TEMP1 @4 TEMP1
-MULTSC &A &B TEMP2
-SUB TEMP1
-* some random stuff...
-STORE &D
+    MULTSC &A &C TEMP1
+    MULTSC TEMP1 @4 TEMP1
+    MULTSC &A &B TEMP2
+
+    SUB TEMP1
+    * some random stuff...
+    STORE &D
 MEND
 *
 READ A 
@@ -33,7 +34,7 @@ READ C
 SCALE 3 
 DISCR A B C D 
 WRITE D 
-STOP 
+*STOP 
 *
 A SPACE
 B SPACE
