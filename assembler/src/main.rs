@@ -35,17 +35,25 @@ fn main() {
     
     let mut mp = macro_processor::MacroProcessor::new(program);
 
-    let p = mp.run();
+    let p = mp.run3(0);
 
     println!("{:#?}", p);
 
     let mut f = OpenOptions::new().append(true).create(true).open("assembler/output_test.asm").unwrap();
 
-    for l in p.unwrap() {
-        let s = lexer::encode(l);
+    let s = p.unwrap().iter().fold(String::new(), |s, l| format!("{}{}", s, &lexer::encode(l.clone())));
 
-        writeln!(f, "{s}").unwrap();
-    }
+    println!("{s}");
+
+    write!(f, "{s}").unwrap();
+
+    // for l in p.unwrap() {
+    //     let s = lexer::encode(l);
+
+    //     s.push_str(string);
+
+    //     write!(f, "{s}").unwrap();
+    // }
 
     // let mut asm = Assembler::new(&args.filepath);
 

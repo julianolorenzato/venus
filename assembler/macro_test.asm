@@ -2,19 +2,17 @@ START TESTE
 *
 MACRO SCALE &RP
     MACRO MULTSC &A &B &C
-
-    LOAD &A
-    MULT &B
-    *SHIFTR &RP
-    STORE &C
+        LOAD &A
+        MULT &B
+        *SHIFTR &RP
+        STORE &C
     MEND
     
     MACRO DIVSC &A &B &C
-
-    LOAD &A
-    DIV &B
-    *SHIFTL &RP
-    STORE &C
+        LOAD &A
+        DIV &B
+        *SHIFTL &RP
+        STORE &C
     MEND
 MEND
 *

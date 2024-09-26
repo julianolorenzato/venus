@@ -11,6 +11,7 @@ pub enum Line {
     MacroDef(String, Vec<String>),
     MacroEnd,
     MacroCall(String, Vec<String>, WhyMacroCall),
+    Removed
 }
 
 pub type Program = Vec<Line>;
@@ -76,9 +77,10 @@ fn decode_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerErro
 
 pub fn encode(line: Line) -> String {
     match line {
-        Line::Empty => "\n".to_string(),
+        Line::Empty => String::from("\n"),
         Line::Comment(mut comment) => {
             comment.insert(0, '*');
+            comment.push('\n');
             comment
         },
         Line::MacroDef(mut name, params) => {
@@ -88,15 +90,17 @@ pub fn encode(line: Line) -> String {
                 name.push_str(&param);
             }
 
+            name.push('\n');
             name
         },
-        Line::MacroEnd => String::from("MEND"),
+        Line::MacroEnd => String::from("MEND\n"),
         Line::MacroCall(mut name, args, _) => {
             for arg in args {
                 name.push(' ');
                 name.push_str(&arg);
             }
 
+            name.push('\n');
             name
         },
         Line::Regular(label, operation, operand1, operand2) => {
@@ -119,8 +123,10 @@ pub fn encode(line: Line) -> String {
                 encoded.push_str(&op2);
             }
 
+            encoded.push('\n');
             encoded
-        }
+        },
+        Line::Removed => String::new()
     }
 }
 
