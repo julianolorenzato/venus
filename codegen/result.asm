@@ -1,0 +1,14 @@
+
+
+
+
+ADD &X
+ADD &Y
+ADD &A
+ADD &B
+SUB &X
+SUB &Y
+SUB &B
+SUB &A
+
+MULT 9 9

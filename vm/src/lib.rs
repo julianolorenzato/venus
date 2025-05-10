@@ -25,7 +25,7 @@ pub struct Payload {
 impl VirtualMachine {
     pub fn execute(&mut self, instr: Instruction, payload: Payload) {
         match instr {
-            Instruction::ADD => self.add(payload),
+            Instruction::Add => self.add(payload),
             _ => panic!("not implemented"),
         }
     }
@@ -79,7 +79,7 @@ mod test {
             },
         };
 
-        vm.execute(Instruction::ADD, payload)
+        vm.execute(Instruction::Add, payload)
     }
 
     #[test]
@@ -94,7 +94,7 @@ mod test {
             },
         };
 
-        vm.execute(Instruction::ADD, payload);
+        vm.execute(Instruction::Add, payload);
     }
 
     #[test]
@@ -109,7 +109,7 @@ mod test {
             },
         };
 
-        vm.execute(Instruction::ADD, payload)
+        vm.execute(Instruction::Add, payload)
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod test {
             },
         };
 
-        vm.execute(Instruction::ADD, payload);
+        vm.execute(Instruction::Add, payload);
 
         assert_eq!(vm.accumulator, 26)
     }
@@ -140,7 +140,7 @@ mod test {
             },
         };
 
-        vm.execute(Instruction::ADD, payload);
+        vm.execute(Instruction::Add, payload);
 
         assert_eq!(vm.accumulator, 102)
     }
@@ -158,7 +158,7 @@ mod test {
             },
         };
 
-        vm.execute(Instruction::ADD, payload);
+        vm.execute(Instruction::Add, payload);
 
         assert_eq!(vm.accumulator, 143)
     }

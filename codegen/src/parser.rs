@@ -1,9 +1,10 @@
-use core::fmt;
-use std::{error::Error, io::Empty};
+use std::slice::Iter;
+
+use crate::error::{ParserError, ParserErrorKind, WhyMacroCall};
 
 use common::{instructions::token_to_instr, pseudo_instructions::token_to_pseudo_instr};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Line {
     Empty,
     Comment(String),
@@ -11,12 +12,12 @@ pub enum Line {
     MacroDef(String, Vec<String>),
     MacroEnd,
     MacroCall(String, Vec<String>, WhyMacroCall),
-    Removed
+    Removed,
 }
 
 pub type Program = Vec<Line>;
 
-pub fn decode(line: &str, line_index: u32) -> Result<Line, LexerError> {
+pub fn decode(line: &str, line_index: u32) -> Result<Line, ParserError> {
     let line = line.trim();
 
     if line.is_empty() {
@@ -36,9 +37,9 @@ pub fn decode(line: &str, line_index: u32) -> Result<Line, LexerError> {
         return if line.to_uppercase() == "MEND" {
             Ok(Line::MacroEnd)
         } else {
-            Err(LexerError::new(
+            Err(ParserError::new(
                 line_index,
-                LexerErrorKind::TooManyTokensAfterMacroEnd,
+                ParserErrorKind::TooManyTokensAfterMacroEnd,
             ))
         };
     }
@@ -46,20 +47,20 @@ pub fn decode(line: &str, line_index: u32) -> Result<Line, LexerError> {
     return parse_line(line.split(" ").collect(), line_index);
 }
 
-fn decode_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerError> {
+fn decode_macro_signature(line: &str, line_index: u32) -> Result<Line, ParserError> {
     let mut tokens = line.split(" ");
 
     let macro_name = tokens.by_ref().skip(1).next();
 
-    let parameters: Result<Vec<String>, LexerError> = tokens
+    let parameters: Result<Vec<String>, ParserError> = tokens
         .enumerate()
         .map(|(param_index, macro_param)| {
             if macro_param.starts_with("&") {
                 Ok(macro_param[1..].to_string())
             } else {
-                Err(LexerError::new(
+                Err(ParserError::new(
                     line_index,
-                    LexerErrorKind::InvalidMacroParam(param_index),
+                    ParserErrorKind::InvalidMacroParam(param_index),
                 ))
             }
         })
@@ -68,12 +69,22 @@ fn decode_macro_signature(line: &str, line_index: u32) -> Result<Line, LexerErro
     if let Some(name) = macro_name {
         Ok(Line::MacroDef(name.to_string(), parameters?))
     } else {
-        Err(LexerError::new(
+        Err(ParserError::new(
             line_index,
-            LexerErrorKind::MissingMacroName,
+            ParserErrorKind::MissingMacroName,
         ))
     }
 }
+
+// pub fn decode_program(program: P) -> Result<Program, ParserError> {
+//     let mut p = vec![];
+
+//     for (i, line) in program {
+//         p.push(decode(line, *i as u32)?)
+//     }
+
+//     Ok(p)
+// }
 
 pub fn encode(line: Line) -> String {
     match line {
@@ -82,7 +93,7 @@ pub fn encode(line: Line) -> String {
             comment.insert(0, '*');
             comment.push('\n');
             comment
-        },
+        }
         Line::MacroDef(mut name, params) => {
             for param in params {
                 name.push(' ');
@@ -92,7 +103,7 @@ pub fn encode(line: Line) -> String {
 
             name.push('\n');
             name
-        },
+        }
         Line::MacroEnd => String::from("MEND\n"),
         Line::MacroCall(mut name, args, _) => {
             for arg in args {
@@ -102,7 +113,7 @@ pub fn encode(line: Line) -> String {
 
             name.push('\n');
             name
-        },
+        }
         Line::Regular(label, operation, operand1, operand2) => {
             let mut encoded = String::new();
 
@@ -125,65 +136,25 @@ pub fn encode(line: Line) -> String {
 
             encoded.push('\n');
             encoded
-        },
-        Line::Removed => String::new()
+        }
+        Line::Removed => String::new(),
     }
 }
+
+// pub fn encode_program(p: Program) -> String {
+//     let mut encoded = String::new();
+
+//     for line in p {
+//         encoded.push_str(&encode(line));
+//     }
+
+//     enc
+// }
 
 // is used? must be
 fn check_name(token: &str) -> bool {
     token.chars().next().unwrap().is_alphabetic()
 }
-
-#[derive(Debug)]
-pub struct LexerError {
-    line_index: u32,
-    kind: LexerErrorKind,
-}
-
-#[derive(Debug)]
-enum LexerErrorKind {
-    InvalidLabel,
-    MissingMacroName,
-    InvalidMacroParam(usize),
-    TooManyTokensAfterMacroEnd,
-    TooFewTokens,
-}
-
-#[derive(Debug, Clone)]
-pub enum WhyMacroCall {
-    NotFoundOperation,
-    TooManyOperations,
-    TooManyTokens,
-    TooManyTokensBeforeOperation,
-    TooManyTokensAfterOperation,
-}
-
-impl LexerError {
-    fn new(line_index: u32, kind: LexerErrorKind) -> Self {
-        LexerError { line_index, kind }
-    }
-}
-
-impl fmt::Display for LexerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let msg = match self.kind {
-            LexerErrorKind::InvalidLabel => "invalid label found".to_string(),
-            LexerErrorKind::MissingMacroName => "macro name not found".to_string(),
-            LexerErrorKind::InvalidMacroParam(param_index) => {
-                format!("argument {param_index} must have a prefixed '&'")
-            }
-            LexerErrorKind::TooManyTokensAfterMacroEnd => {
-                "too many tokens found after MEND".to_string()
-            }
-            _ => "something gone wrong".to_string(),
-        };
-
-        writeln!(f, "{} (at line {}).", msg, self.line_index)
-    }
-}
-
-impl Error for LexerError {}
 
 pub fn is_valid_operation(token: &str) -> bool {
     if let Some(_) = token_to_instr(token) {
@@ -195,12 +166,11 @@ pub fn is_valid_operation(token: &str) -> bool {
     }
 }
 
-
 // maybe should change Line to have PseudoInstrCall and MachineInstrCall, and find each in this function instead of just calling it 'Regular', and the second field of each should be of the proper type (PseudoInstr or MachineInstr)
 // maybe instead Ok(Regular...) go to function to define which type of instruction (pseudo or machine)
-pub fn parse_line(line: Vec<&str>, line_index: u32) -> Result<Line, LexerError> {
+pub fn parse_line(line: Vec<&str>, line_index: u32) -> Result<Line, ParserError> {
     match &line[..] {
-        [] => Err(LexerError::new(line_index, LexerErrorKind::TooFewTokens)),
+        [] => Err(ParserError::new(line_index, ParserErrorKind::TooFewTokens)),
         [a] => match is_valid_operation(a) {
             true => Ok(Line::Regular(None, a.to_string(), None, None)),
             false => Ok(Line::MacroCall(

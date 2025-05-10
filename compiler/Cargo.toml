@@ -1,0 +1,10 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pest = { version = "2" }
+pest_derive = { version = "2" }
+regex = { workspace = true }
+itertools = { workspace = true }

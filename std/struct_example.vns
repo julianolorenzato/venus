@@ -1,0 +1,7 @@
+(defstruct City
+    (population u32)
+    (name string)
+    (speaken-languages (:list string)))
+
+(get-first-speaken-language (city City)
+    (first (. city "speaken-languages"))) ;; maybe should I use "get" instead of "."?

@@ -1,0 +1,23 @@
+#lang typed/venus
+
+(define sum ((a u32) (b u32) u32)
+    (+ a b))
+
+(define sum (a b) (u32 u32) u32
+    (+ a b))
+
+(: sum (u32 u32) u32)
+(define sum (a b)
+    (+ a b))
+
+(: (u32 u32) u32)
+(define sum (a b)
+    (+ a b))
+
+(: sum (u32 u32) u32
+    (define sum (a b)
+        (+ a b)))
+
+(: (u32 u32) u32
+    (define sum (a b)
+        (+ a b)))

@@ -1,11 +1,7 @@
-mod error;
-mod parser;
-mod lexer;
-
+use crate::parser::{Line, Program};
 use common::{instructions::token_to_instr, pseudo_instructions::token_to_pseudo_instr};
 use common::{NOperands, Sizeable, Word};
-use error::{Kind, ParseError};
-use parser::{ParsedLine, ParsedProgram};
+// use parser::{ParsedLine, ParsedProgram};
 use std::io::Read;
 use std::slice::Iter;
 use std::{
@@ -14,8 +10,12 @@ use std::{
     io::{BufRead, BufReader, Seek},
 };
 
-pub struct Assembler<'a> {
-    source: Iter<'a, ParsedLine>,
+pub fn run(p: Program) -> Program {
+    p
+}
+
+pub struct Assembler {
+    source: Vec<Line>,
     line_counter: u32,
     location_counter: u32,
     symbol_table: HashMap<String, Info>,
@@ -32,7 +32,7 @@ struct Info {
     address: Option<u32>,
 }
 
-impl<'a> Assembler<'a> {
+impl Assembler {
     // pub fn new<R: Read>(source: Iter<ParsedLine>) -> Self {
     //     Assembler {
     //         source,
@@ -73,33 +73,37 @@ impl<'a> Assembler<'a> {
     //     Ok(Some(Vec::<u16>::new()))
     // }
 
-    fn first_pass(&mut self, p: ParsedProgram) {
-        for (label, _, operand1, operand2) in p {
-            if let Some(label) = label {
-                let info = Info {
-                    allocation_mode: AllocationMode::Relative,
-                    address: Some(self.location_counter),
-                };
-
-                self.symbol_table.insert(label, info);
-            }
-
-            if let Some(operand1) = operand1 {
-                if let Some(literal) = extract_literal(&operand1) {
-                    // TODO: literals
-                } else {
+    fn first_pass(&mut self, p: Vec<Line>) {
+        for line in p {
+            if let Line::Regular(label, operation, operand1, operand2) = line {
+                if let Some(label) = label {
                     let info = Info {
                         allocation_mode: AllocationMode::Relative,
-                        address: None,
+                        address: Some(self.location_counter),
                     };
 
-                    self.symbol_table.insert(operand1, info);
+                    self.symbol_table.insert(label, info);
                 }
+
+                if let Some(operand1) = operand1 {
+                    if let Some(literal) = extract_literal(&operand1) {
+                        // TODO: literals
+                    } else {
+                        let info = Info {
+                            allocation_mode: AllocationMode::Relative,
+                            address: None,
+                        };
+
+                        self.symbol_table.insert(operand1, info);
+                    }
+                }
+            } else {
+                panic!("is not a regular line")
             }
         }
     }
 
-    fn second_pass(&mut self, p: ParsedProgram) {}
+    // fn second_pass(&mut self, p: ParsedProgram) {}
 }
 
 // pub fn run<R: Read>(source: R) -> Program {

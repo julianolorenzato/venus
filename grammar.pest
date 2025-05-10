@@ -1,0 +1,29 @@
+digit = {'0'..'9'}
+alpha = {'a'..'z' | 'A'..'Z'}
+
+identifier = {alpha ~ (alpha | digit | "-")*}
+number = {digit+}
+blank = {" " | "\n" | "\t"}
+
+list = {"(" ~ blank* ~ list_items? ~ blank* ~ ")"}
+list_items = { expr ~ (blank+ ~ expr)* }
+
+operator = {"+" | "-" | "*" | "/" | identifier}
+
+expr = {
+	("("
+        ~ blank*
+    	~ operator
+    	~ blank+
+        ~ expr
+        ~ blank+
+        ~ expr
+        ~ blank*
+        ~ ")"
+    )
+	| number
+    | list
+    | identifier
+}
+
+program = { SOI ~ blank* ~ list_items ~ blank* ~ EOI }
